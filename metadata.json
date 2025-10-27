@@ -1,0 +1,7 @@
+{
+  "name": "Prospector B2B IA",
+  "description": "Uma ferramenta de prospecção B2B alimentada por IA que utiliza Gemini para encontrar e qualificar leads com informações atualizadas da web e de mapas.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
