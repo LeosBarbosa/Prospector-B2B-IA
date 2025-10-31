@@ -1,251 +1,185 @@
-import { GoogleGenAI, GenerateContentRequest } from "@google/genai";
-import { Prospect, Partner } from "./types";
 
-let geminiClient: GoogleGenAI | null = null;
+// Fixed file formatting.
+import { GoogleGenAI, GenerateContentParameters, GenerateContentResponse, Type } from "@google/genai";
+// FIX: Import Prospect type
+// FIX: Add file extension to fix module resolution error.
+import type { Prospect } from '../types.ts';
+
+let ai: GoogleGenAI | null = null;
 
 export const getGeminiClient = (): GoogleGenAI => {
-  if (!geminiClient) {
-    if (!process.env.API_KEY) {
-      throw new Error("API_KEY do Gemini não encontrada no ambiente.");
+    if (!ai) {
+        // FIX: Per coding guidelines, API_KEY must be sourced from process.env.API_KEY.
+        // The fallback logic with a demo key has been removed.
+        // The guidelines state to assume process.env.API_KEY is always available.
+        if (!process.env.API_KEY) {
+            throw new Error("API_KEY environment variable not set.");
+        }
+        ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     }
-    geminiClient = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  }
-  return geminiClient;
+    return ai;
 };
 
-export interface B2BFilters {
-  aiPrompt?: string;
-  jobTitle?: string;
-  location?: string;
-  industry?: string;
-  technologies?: string;
-  revenue?: string;
-}
-
-export const createB2BPrompt = (query: string, filters: B2BFilters = {}): string => {
-  let finalQuery = filters.aiPrompt ? filters.aiPrompt : query;
-  
-  let filterInstructions = "";
-  const appliedFilters: string[] = [];
-
-  if (filters.jobTitle) appliedFilters.push(`- Cargos: ${filters.jobTitle}`);
-  if (filters.location) appliedFilters.push(`- Localização: ${filters.location}`);
-  if (filters.industry) appliedFilters.push(`- Indústria/Setor: ${filters.industry}`);
-  if (filters.technologies) appliedFilters.push(`- Tecnologias Utilizadas: ${filters.technologies}`);
-  if (filters.revenue) appliedFilters.push(`- Faixa de Receita (Faturamento): ${filters.revenue}`);
-
-
-  if (appliedFilters.length > 0) {
-    filterInstructions = `
----
-**CRITÉRIOS DE FILTRAGEM ADICIONAIS (OBRIGATÓRIO):**
----
-Além da busca principal, refine os resultados para que correspondam ESTritamente aos seguintes critérios:
-${appliedFilters.join('\n')}
-`;
-  }
-
-  return `
-**DIRETIVA PRINCIPAL: INVESTIGAÇÃO CORPORATIVA SÊNIOR**
-
-**PERSONA:** Você é um Investigador Corporativo Sênior, especializado em inteligência de mercado e análise de risco B2B. Sua missão é realizar uma pesquisa profunda (Deep Research) sobre a empresa informada e produzir um relatório de inteligência completo e validado.
-
-**FOCO ABSOLUTO (NÃO-NEGOCIÁVEL):** A qualidade da investigação é medida pela precisão e profundidade do mapeamento do **Quadro Societário (QSA)** e da **Liderança Executiva**. A obtenção de dados de contato (LinkedIn, e-mail profissional, telefone) é uma diretiva crítica.
-
----
-**ETAPAS DA INVESTIGAÇÃO PROFUNDA:**
----
-1.  **IDENTIFICAÇÃO E CADASTRO:**
-    *   Valide os dados cadastrais completos (Razão Social, Nome Fantasia, CNPJ, Endereço com CEP).
-    *   **QSA (Quadro de Sócios e Administradores):** Detalhe o QSA completo, buscando ativamente por **CPF (se público), cargo e participação societária (%)** para cada sócio.
-    *   **Diretoria:** Identifique e liste os diretores e seus respectivos cargos.
-    *   **Histórico Societário:** Se disponível, resuma brevemente as últimas alterações societárias.
-
-2.  **MAPEAMENTO DE LIDERANÇA E CONTATOS:**
-    *   Para **C-Levels, Diretores e Gerentes Sêniores**, encontre e valide: **nome completo, cargo, URL do perfil no LinkedIn, e-mail profissional e telefone corporativo.**
-    *   Para cada perfil do LinkedIn, extraia e analise: 'headline', 'deepAnalysis' (análise do perfil), 'connectionPoints' e um 'actionPlan' para abordagem.
-
-3.  **ANÁLISE DE MERCADO E OPORTUNIDADE (ENRIQUECIMENTO):**
-    *   **Inteligência de Vendas:** Identifique 'potentialClients' e calcule a 'conversionProbability' (Alta, Média, Baixa) com justificativa.
-    *   **Dados Estratégicos:** Colete 'numberOfEmployees', 'productsOrServices', 'swotAnalysis' e 'recentNews'.
-
-${filterInstructions}
-
----
-**FORMATO DE SAÍDA OBRIGATÓRIO (JSON PURO E VÁLIDO):**
----
-A resposta DEVE ser um único objeto JSON ou um array de objetos JSON.
-\`\`\`json
-{
-  "name": "Razão Social Completa",
-  "tradeName": "Nome Fantasia",
-  "description": "Resumo da empresa.",
-  "website": "https://www.site.com.br",
-  "phone": "(XX) XXXX-XXXX",
-  "cnpj": "XX.XXX.XXX/0001-XX",
-  "address": "Endereço completo com CEP",
-  "mainActivity": "Atividade principal",
-  "revenueRange": "Estimativa de faturamento",
-  "segment": "Segmento de mercado",
-  "numberOfEmployees": "Estimativa de funcionários",
-  "productsOrServices": ["Produto/Serviço 1"],
-  "corporateHistory": "Breve resumo do histórico societário, se encontrado.",
-  "qsa": [
-    { "name": "Nome Sócio A", "qualification": "Sócio-Administrador", "cpf": "XXX.XXX.XXX-XX", "share": "50%" }
-  ],
-  "directors": [
-    { "name": "Nome Diretor A", "position": "Diretor de TI" }
-  ],
-  "partners": [
-    {
-      "name": "Nome Completo do Contato",
-      "qualification": "Cargo (ex: Diretor de TI)",
-      "email": "email.contato@empresa.com",
-      "phone": "(XX) XXXXX-XXXX",
-      "linkedinProfileUrl": "https://www.linkedin.com/in/perfil",
-      "headline": "Headline do LinkedIn",
-      "deepAnalysis": "Análise do perfil.",
-      "connectionPoints": ["Ponto de conexão 1"],
-      "actionPlan": "Plano de ação sugerido.",
-      "linkedCompanies": [
-        { "name": "Outra Empresa S.A.", "cnpj": "YY.YYY.YYY/0001-YY", "role": "Sócio" }
-      ]
-    }
-  ],
-  "conversionProbability": { "score": "Alta", "justification": "Justificativa." },
-  "potentialClients": [ { "clientName": "Cliente Exemplo", "reason": "Razão." } ],
-  "recentNews": "Notícia recente.",
-  "swotAnalysis": { "strengths": [], "weaknesses": [], "opportunities": [], "threats": [] }
-}
-\`\`\`
-
-**ALVO DA INVESTIGAÇÃO:** "${finalQuery}"
-`;
-}
-
-export const createFindContactsPrompt = (prospect: Prospect, existingContactNames: string[]): string => `
-**DIRETIVA PRINCIPAL: EXPANSÃO DE REDE E VERIFICAÇÃO DE CONTATOS (DEEP RESEARCH)**
-
-**PERSONA:** Você é um Investigador Corporativo Sênior e Headhunter Digital. Sua missão é realizar uma **pesquisa aprofundada (Deep Research)** para encontrar e, mais importante, **validar** novos executivos de alto valor em uma empresa-alvo. A precisão e autenticidade dos dados são prioridade máxima.
-
-**MISSÃO:**
-1.  Analisar a empresa-alvo usando a busca na web para encontrar executivos de nível C, Diretores, Gerentes e Coordenadores.
-2.  **VALIDAR CADA PERFIL:** Antes de incluir um contato na resposta, verifique sua autenticidade. Perfis com nomes fictícios ou informações inconsistentes devem ser descartados. Use a busca para cruzar informações e garantir que o perfil do LinkedIn é real e pertence a um profissional ativo na empresa.
-3.  Encontrar **NOVOS** contatos, evitando duplicatas.
-
----
-**REGRAS DA BUSCA E VALIDAÇÃO:**
----
-1.  **VERACIDADE ACIMA DE TUDO:** A prioridade é a qualidade e a autenticidade dos dados. É melhor retornar menos contatos validados do que muitos contatos imprecisos ou fictícios.
-2.  **EVITAR DUPLICATAS:** **NÃO inclua** os seguintes contatos que já foram identificados: ${existingContactNames.join(', ') || 'Nenhum'}.
-3.  **DADOS CRÍTICOS E VALIDADOS:** Para cada **NOVO** contato encontrado, é **obrigatório** fornecer:
-    *   Nome completo ('name')
-    *   Cargo ('qualification')
-    *   E-mail profissional verificado ('email')
-    *   URL do perfil no LinkedIn autêntico ('linkedinProfileUrl')
-
----
-**DADOS DA EMPRESA-ALVO:**
----
-- **Empresa:** ${prospect.name}
-- **Segmento:** ${prospect.segment}
-- **Website:** ${prospect.website}
-
----
-**FORMATO DE SAÍDA OBRIGATÓRIO (JSON PURO E VÁLIDO):**
----
-A resposta DEVE ser um array de objetos JSON, mesmo que esteja vazio.
-\`\`\`json
-[
-  {
-    "name": "Nome Completo do Novo Contato Validado",
-    "qualification": "Cargo do Novo Contato",
-    "email": "email.novo.validado@empresa.com",
-    "linkedinProfileUrl": "https://www.linkedin.com/in/perfil-real-e-verificado"
-  }
-]
-\`\`\`
-`;
-
-export const createQualificationPrompt = (prospect: Prospect): string => `
-**DIRETIVA PRINCIPAL: QUALIFICAÇÃO DE LEAD B2B (FRAMEWORK BANT)**
-
-**PERSONA:** Você é um Sales Development Representative (SDR) de elite, com alta performance, especializado em qualificar leads inbound e outbound para garantir que a equipe de vendas foque apenas nas melhores oportunidades.
-
-**MISSÃO:** Analisar o dossiê da empresa-alvo e realizar uma qualificação completa usando o framework BANT (Budget, Authority, Need, Timeline). O resultado deve ser uma análise objetiva, com score, status e próximos passos recomendados.
-
----
-**DADOS DO PROSPECT PARA ANÁLISE:**
----
-- **Empresa:** ${prospect.name} (${prospect.tradeName || ''})
-- **Segmento:** ${prospect.segment}
-- **Faturamento Estimado:** ${prospect.revenueRange}
-- **Nº de Funcionários:** ${prospect.numberOfEmployees}
-- **Descrição:** ${prospect.description}
-- **Notícias Recentes:** ${prospect.recentNews}
-- **Análise SWOT:** ${JSON.stringify(prospect.swotAnalysis)}
-- **Contatos-Chave:** ${prospect.partners?.map(p => `${p.name} (${p.qualification})`).join(', ')}
-
----
-**ETAPAS DA QUALIFICAÇÃO (BANT):**
----
-1.  **Budget (Orçamento):** Com base no faturamento, segmento e notícias, infira a capacidade financeira da empresa. Ela tem orçamento para soluções como a que seria oferecida?
-2.  **Authority (Autoridade):** Os contatos identificados são os tomadores de decisão corretos? Se não, quem deveria ser o alvo?
-3.  **Need (Necessidade):** Com base na análise SWOT e na descrição da empresa, identifique um ponto de dor claro que a sua solução poderia resolver. A necessidade é explícita ou latente?
-4.  **Timeline (Prazo):** Há algum indicador (notícias de expansão, contratações) que sugira urgência na resolução do problema identificado? Estime um prazo para a decisão de compra.
-
----
-**FORMATO DE SAÍDA OBRIGATÓRIO (JSON PURO E VÁLIDO):**
----
-A resposta DEVE ser um único objeto JSON, seguindo ESTRITAMENTE o modelo abaixo.
-\`\`\`json
-{
-  "score": 85,
-  "status": "Hot",
-  "summary": "Resumo executivo da qualificação e recomendação de próximos passos.",
-  "budget": {
-    "analysis": "Análise sobre a capacidade de investimento da empresa.",
-    "hasBudget": true
-  },
-  "authority": {
-    "analysis": "Análise sobre os contatos identificados e quem detém o poder de decisão.",
-    "decisionMakerIdentified": true
-  },
-  "need": {
-    "analysis": "Descrição do principal ponto de dor ou necessidade da empresa.",
-    "hasNeed": true
-  },
-  "timeline": {
-    "analysis": "Estimativa do prazo para uma decisão de compra.",
-    "isUrgent": false
-  }
-}
-\`\`\`
-`;
-
-
 export const generateGeminiContent = async (
-  requestConfig: Omit<GenerateContentRequest, 'model'>
-): Promise<any> => {
-  try {
-    const ai = getGeminiClient();
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      ...requestConfig,
-      config: {
-        temperature: 0.2, 
-        topP: 0.9,
-        ...requestConfig.config,
-      },
-    });
-
-    if (!response.text) {
-      throw new Error("A IA não retornou conteúdo de texto.");
+    params: GenerateContentParameters
+): Promise<GenerateContentResponse> => {
+    try {
+        const gemini = getGeminiClient();
+        // Use gemini-2.5-flash as a default if no model is provided, which is suitable for most tasks here.
+        const model = params.model || 'gemini-2.5-flash';
+        const response = await gemini.models.generateContent({ ...params, model });
+        return response;
+    } catch (error) {
+        console.error("Error generating Gemini content:", error);
+        throw new Error("Failed to communicate with the AI model.");
     }
+};
 
-    return response;
-  } catch (error: any) {
-    console.error("Erro na chamada da API Gemini:", error);
-    throw new Error(error.message || "Falha na comunicação com a IA Gemini.");
-  }
+const prospectSchema = {
+    type: Type.OBJECT,
+    properties: {
+        name: { type: Type.STRING, description: "Razão Social da empresa" },
+        tradeName: { type: Type.STRING, description: "Nome Fantasia da empresa" },
+        description: { type: Type.STRING, description: "Descrição concisa do que a empresa faz" },
+        website: { type: Type.STRING, description: "URL do site da empresa" },
+        cnpj: { type: Type.STRING, description: "CNPJ formatado" },
+        phone: { type: Type.STRING, description: "Telefone principal" },
+        address: { type: Type.STRING, description: "Endereço completo" },
+        segment: { type: Type.STRING, description: "Segmento de mercado, ex: 'Tecnologia', 'Varejo'" },
+        mainActivity: { type: Type.STRING, description: "Atividade principal (CNAE)" },
+        revenueRange: { type: Type.STRING, description: "Faixa de faturamento anual estimada, ex: 'R$ 1M - R$ 5M'" },
+        numberOfEmployees: { type: Type.NUMBER, description: "Número estimado de funcionários" },
+        partners: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING },
+                    qualification: { type: Type.STRING }
+                }
+            },
+            description: "Lista de sócios ou contatos chave"
+        },
+        conversionProbability: {
+            type: Type.OBJECT,
+            properties: {
+                score: { type: Type.STRING, enum: ['Alta', 'Média', 'Baixa'] },
+                justification: { type: Type.STRING }
+            },
+            description: "Análise de probabilidade de conversão"
+        }
+    }
+};
+
+export const createB2BPrompt = (companyIdentifier: string): string => {
+  return `
+    Você é um especialista em prospecção B2B e análise de mercado.
+    Sua tarefa é pesquisar na internet e compilar um dossiê detalhado sobre a empresa a seguir.
+    
+    Empresa: "${companyIdentifier}"
+
+    Use a ferramenta de busca para encontrar o máximo de informações possível.
+    Seja minucioso. Priorize dados do Brasil. Se não encontrar uma informação, retorne um valor nulo para o campo correspondente.
+
+    Responda APENAS com um objeto JSON que corresponda ao schema fornecido.
+  `;
+};
+
+export const createQualificationPrompt = (prospect: Prospect): string => {
+    return `
+      Você é um SDR (Sales Development Representative) experiente, especialista em qualificação de leads usando a metodologia BANT (Budget, Authority, Need, Timeline).
+      Analise os dados do prospect a seguir e forneça uma análise de qualificação completa.
+
+      **Dados do Prospect:**
+      - Nome: ${prospect.tradeName || prospect.name}
+      - Segmento: ${prospect.segment}
+      - Descrição: ${prospect.description}
+      - Faturamento Estimado: ${prospect.revenueRange}
+      - Notícias Recentes: ${prospect.recentNews || 'N/A'}
+      - Clientes Potenciais (Inferido): ${prospect.potentialClients?.map(c => c.clientName).join(', ') || 'N/A'}
+
+      **Sua Tarefa:**
+      Baseado nos dados, infira a qualificação BANT. Seja realista.
+      
+      **FORMATO DE SAÍDA OBRIGATÓRIO:**
+      Responda APENAS com um objeto JSON, dentro de um bloco de código.
+      O JSON deve ter a seguinte estrutura:
+      {
+        "status": "Hot" | "Warm" | "Cold",
+        "score": number (de 0 a 100),
+        "summary": "string (Um resumo conciso da sua análise de qualificação)",
+        "budget": { "analysis": "string (Análise sobre a capacidade financeira do prospect)" },
+        "authority": { "analysis": "string (Análise sobre quem seriam os decisores)" },
+        "need": { "analysis": "string (Análise sobre a necessidade do prospect para uma solução como a sua)" },
+        "timeline": { "analysis": "string (Análise sobre a urgência ou o momento ideal para a abordagem)" }
+      }
+    `;
+};
+
+export const createFindContactsPrompt = (prospect: Prospect, existingContactNames: string[]): string => {
+  return `
+    Você é um especialista em inteligência de vendas e pesquisa de contatos.
+    Sua tarefa é encontrar contatos-chave adicionais para a empresa "${prospect.tradeName || prospect.name}" que ainda não estão na lista.
+
+    **Empresa:** ${prospect.tradeName || prospect.name}
+    **Website:** ${prospect.website}
+    **Contatos já existentes (NÃO INCLUIR ESTES):** ${existingContactNames.join(', ')}
+
+    **Instruções:**
+    1. Pesquise no Google e no LinkedIn por executivos, diretores ou gerentes nas áreas de Vendas, Marketing, TI, Operações ou Finanças da empresa.
+    2. Para cada novo contato encontrado, tente obter o nome completo, cargo, e-mail e URL do perfil do LinkedIn.
+    3. Foque em contatos que pareçam ser decisores ou influenciadores para a compra de software B2B.
+
+    **FORMATO DE SAÍDA OBRIGATÓRIO:**
+    Responda APENAS com um array de objetos JSON, dentro de um bloco de código.
+    Se nenhum novo contato for encontrado, retorne um array vazio [].
+    O array deve seguir o seguinte schema:
+    [
+      {
+        "name": "string",
+        "qualification": "string (Cargo)",
+        "email": "string | null",
+        "linkedinProfileUrl": "string | null"
+      }
+    ]
+  `;
+};
+
+
+export const createColumnMappingPrompt = (headers: string[]): string => {
+    return `
+      Você é um assistente de importação de dados inteligente. Sua tarefa é mapear os cabeçalhos de uma planilha fornecida pelo usuário para um schema de dados predefinido.
+      
+      **Schema de Destino:**
+      - name: Razão Social da empresa.
+      - tradeName: Nome Fantasia.
+      - cnpj: CNPJ da empresa.
+      - description: Descrição do que a empresa faz.
+      - website: Site da empresa.
+      - phone: Telefone geral da empresa.
+      - segment: Segmento de mercado.
+      - contactName: Nome de um contato na empresa.
+      - contactQualification: Cargo do contato.
+      - contactEmail: E-mail do contato.
+      - contactPhone: Telefone do contato.
+
+      **Cabeçalhos da Planilha do Usuário:**
+      ${headers.map(h => `- "${h}"`).join('\n')}
+
+      **Instruções:**
+      1. Analise cada cabeçalho da planilha.
+      2. Encontre a melhor correspondência no "Schema de Destino". A correspondência pode ser parcial, em outro idioma (português/inglês), ou sinônima (ex: "Cargo" -> "contactQualification", "Empresa" -> "name").
+      3. Se um cabeçalho não tiver uma correspondência clara, mapeie-o para \`null\`.
+
+      **FORMATO DE SAÍDA OBRIGATÓRIO:**
+      Responda APENAS com um único objeto JSON, dentro de um bloco de código.
+      O objeto deve ter os cabeçalhos da planilha como chaves e os campos do schema de destino (ou null) como valores.
+      Exemplo de formato:
+      {
+        "Nome da Empresa": "name",
+        "Site": "website",
+        "Contato Principal": "contactName",
+        "Coluna Irrelevante": null
+      }
+    `;
 };

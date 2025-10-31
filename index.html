@@ -1,42 +1,66 @@
 <!DOCTYPE html>
-<html lang="pt-br">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Prospector B2B IA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      body {
-        background-color: #0d1117;
-      }
-      @keyframes fade-in-down {
-        from {
-          opacity: 0;
-          transform: translateY(-1rem);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      .animate-fade-in {
-        animation: fade-in-down 0.5s ease-out forwards;
-      }
-    </style>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>B2B Prospector AI</title>
   <script type="importmap">
 {
   "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@0.2.1",
+    "react-beautiful-dnd": "https://esm.sh/react-beautiful-dnd@13.1.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.26.0",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs"
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
   }
 }
 </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'background-dark': '#1F2937',
+            'background-light': '#F9FAFB',
+            'color-primary': '#10B981',
+            'color-primary-dark': '#0F966D',
+            'color-secondary': '#FF9900',
+            'color-accent': '#8B5CF6',
+            'text-dark': '#1F2937',
+            'text-light': '#FFFFFF',
+            'text-muted': '#6B7280',
+            'border-color': '#E5E7EB',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+           keyframes: {
+                'fade-in': {
+                    '0%': { opacity: '0' },
+                    '100%': { opacity: '1' },
+                },
+                 'slide-in-left': {
+                    '0%': { transform: 'translateX(-20px)', opacity: '0' },
+                    '100%': { transform: 'translateX(0)', opacity: '1' },
+                },
+            },
+            animation: {
+                'fade-in': 'fade-in 0.3s ease-out forwards',
+                'slide-in-left': 'slide-in-left 0.3s ease-out forwards',
+            }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>
